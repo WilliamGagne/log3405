@@ -110,10 +110,23 @@ public class Main {
 	}
 	
 	public static File copierFichier(String nom) {
-		return null;
+		
+		return new File("./" + nom);
+		
 	}
 	
 	public static void collerFichier(File fichier) {
+		
+		File copieFile = new File(fichier, fichier.getName());
+		boolean resultat = copieFile.exists();
+		
+		//boolean resultat = fichier.renameTo(new File(new File("./"), fichier.getName()));
+		
+		if (resultat)
+	     {
+	      System.out.println("Le fichier a été déplacé vers==> ./ ");
+	    }else
+	    	System.out.println ("Impossible de déplacer ce fichier");
 		
 	}
 	

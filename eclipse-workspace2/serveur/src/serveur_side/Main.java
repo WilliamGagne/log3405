@@ -23,7 +23,7 @@ public class Main extends Thread{
 	public static void main(String[] args) {
 		
 		// initialise le la reference de port
-		portRef = args.length == 1 ? Integer.valueOf(args[0])-1 : 5000;
+		portRef = args.length == 1 ? Integer.valueOf(args[0])-1 : 5006;
 		
 		// ouverture du premier client
 		Main nouveauClient = new Main();
@@ -56,7 +56,7 @@ public class Main extends Thread{
 			// communication avec le client
 			while ((commande = (String[])fluxEntree.readObject()) != null) {
 				
-				System.out.println("[" + adresseClient + "-" + format.format(date) + "]: " + commande);
+				System.out.println("[" + adresseClient + "-" + format.format(date) + "]: " + commande[0] + " " + (commande.length>1 ? commande[1]: ""));
 				
 				switch(commande[0]) {
 					case "cd": 
@@ -98,6 +98,10 @@ public class Main extends Thread{
 	public String cd(String dossier) {
 		
 		// implement /..
+		if(dossier.equals("..")) {
+			chemin = chemin.equals("./serveur") ? chemin: chemin.substring(0, chemin.lastIndexOf("/"));
+			return chemin;
+		}
 		
 		for(String fichier: ls()) {
 			if(fichier.equals(dossier)) {
@@ -124,12 +128,16 @@ public class Main extends Thread{
 		}
 	}
 	
-	public static File copierFichier(String nom) {
-		return null;
+	public File copierFichier(String nom) {
+		
+		return new File(chemin + "/" + nom);
+
 	}
 	
-	public static void collerFichier(File fichier) {
+	public void collerFichier(File fichier) {
 		
+		fichier.renameTo(new File(new File(chemin), fichier.getName()));
+
 	}
 	
 }

@@ -1,13 +1,20 @@
 package serveur_side;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
@@ -18,12 +25,12 @@ public class Main extends Thread{
 	static int nbClient = 0;
 	static int portRef;
 	
-	String chemin = "./serveur";
+	String chemin = "./../../serveur";
 	
 	public static void main(String[] args) {
 		
 		// initialise le la reference de port
-		portRef = args.length == 1 ? Integer.valueOf(args[0])-1 : 5006;
+		portRef = args.length == 1 ? Integer.valueOf(args[0])-1 : 5012;
 		
 		// ouverture du premier client
 		Main nouveauClient = new Main();
@@ -69,10 +76,10 @@ public class Main extends Thread{
 						fluxSortie.writeObject(mkdir(commande[1]));
 						break;
 					case "upload": 
-						collerFichier((File)fluxEntree.readObject());
+						collerFichier(fluxEntree, commande[1]);
 						break;
 					case "download": 
-						fluxSortie.writeObject(copierFichier(commande[1]));
+						copierFichier2(commande[1], fluxSortie);
 						break;
 					case "exit":
 						System.exit(0);				
@@ -86,6 +93,7 @@ public class Main extends Thread{
 			// afficher l'erreur et mettre fin a la communication avec ce client
 			System.err.println(e);
 			return;
+			
 		}
 	}
 	
@@ -95,11 +103,12 @@ public class Main extends Thread{
 		nouveauClient(portRef);
 	}
 	
+	// done
 	public String cd(String dossier) {
 		
 		// implement /..
 		if(dossier.equals("..")) {
-			chemin = chemin.equals("./serveur") ? chemin: chemin.substring(0, chemin.lastIndexOf("/"));
+			chemin = chemin.equals("./../../serveur") ? chemin: chemin.substring(0, chemin.lastIndexOf("/"));
 			return chemin;
 		}
 		
@@ -112,6 +121,7 @@ public class Main extends Thread{
 		return "aucun repertoire a ce nom";
 	}
 	
+	// done
 	public String[] ls() {
 		
 		File repertoire = new File(chemin);
@@ -119,6 +129,7 @@ public class Main extends Thread{
 	
 	}
 	
+	// done
 	public String mkdir(String nom) {
 		try {
 			Files.createDirectories(Paths.get(chemin+"/"+nom));
@@ -128,16 +139,45 @@ public class Main extends Thread{
 		}
 	}
 	
-	public File copierFichier(String nom) {
+	// done
+	public void copierFichier2(String nom, ObjectOutputStream fluxSortie) throws IOException {
 		
-		return new File(chemin + "/" + nom);
-
+		FileInputStream fluxFichier = null;
+	    BufferedInputStream fluxEntree = null;
+	    byte[] data;
+	    
+        try {
+          // send file
+          File fichier = new File (chemin +"/"+nom);
+          data  = new byte [(int)fichier.length()];
+          fluxFichier = new FileInputStream(fichier);
+          fluxEntree = new BufferedInputStream(fluxFichier);
+          fluxEntree.read(data,0,data.length);
+          
+          fluxSortie.writeObject(data);
+                    
+        } catch (Exception e) {
+        	
+        	data = new byte[1];
+            fluxSortie.writeObject(data);
+			
+		}
+		      
 	}
 	
-	public void collerFichier(File fichier) {
+	public void collerFichier(ObjectInputStream fluxEntree, String nom) throws Exception{
 		
-		fichier.renameTo(new File(new File(chemin), fichier.getName()));
-
+		byte[] data = (byte[])fluxEntree.readObject();
+		
+		FileOutputStream fluxFichier = null;
+	    BufferedOutputStream fluxSortie = null;
+	    
+		fluxFichier = new FileOutputStream(chemin + "/" + nom);
+	    fluxSortie = new BufferedOutputStream(fluxFichier);
+	    
+	    fluxSortie.write(data, 0 , data.length);
+	    fluxSortie.flush();
+	    
 	}
 	
 }

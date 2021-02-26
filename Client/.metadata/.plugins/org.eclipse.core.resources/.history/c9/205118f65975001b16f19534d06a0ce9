@@ -1,0 +1,7 @@
+
+public enum Reponse {
+	continuer,
+	afficher,
+	dowloader,
+	arreter;
+}

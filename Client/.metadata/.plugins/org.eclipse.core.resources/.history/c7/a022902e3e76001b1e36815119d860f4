@@ -1,0 +1,17 @@
+package snippet;
+
+public class Snippet {
+	FileChannel sourceChannel = null;
+		    FileChannel destChannel = null;
+		    File dest = new File(fichier.getName());
+		    
+		    try {
+		        sourceChannel = new FileInputStream(fichier).getChannel();
+		        destChannel = new FileOutputStream(dest).getChannel();
+		        destChannel.transferFrom(sourceChannel, 0, sourceChannel.size());
+		        sourceChannel.close();
+		           destChannel.close();
+		       }
+		    catch(Exception e) {}
+}
+

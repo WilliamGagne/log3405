@@ -25,12 +25,20 @@ public class Main extends Thread{
 	static int nbClient = 0;
 	static int portRef;
 	
-	String chemin = "./../../serveur";
+	String chemin = "./";
 	
+	// done
 	public static void main(String[] args) {
 		
-		// initialise le la reference de port
-		portRef = args.length == 1 ? Integer.valueOf(args[0])-1 : 5012;
+		try { 		// initialise le la reference de port	
+			
+			portRef = Integer.valueOf(args[0])-1 ;
+			if(portRef < 5000 || portRef > 5050) throw new Exception("mauvais port");
+			if(portRef != Math.floor( portRef)) throw new Exception("mauvais port");
+			
+		} catch (Exception e) {
+			System.exit(0);
+		}
 		
 		// ouverture du premier client
 		Main nouveauClient = new Main();
@@ -38,9 +46,11 @@ public class Main extends Thread{
 		
 	}
 	
+	// done
 	public void nouveauClient(int port) {
 		
 		try {
+			
 			// initialisation des sockets
 			ServerSocket serveur = new ServerSocket(port);
 			Socket client = serveur.accept();
@@ -60,6 +70,8 @@ public class Main extends Thread{
 			Main nouveauClient = new Main();
 			nouveauClient.start();
 			
+			nbClient++;
+			
 			// communication avec le client
 			while ((commande = (String[])fluxEntree.readObject()) != null) {
 				
@@ -76,13 +88,15 @@ public class Main extends Thread{
 						fluxSortie.writeObject(mkdir(commande[1]));
 						break;
 					case "upload": 
-						collerFichier(fluxEntree, commande[1]);
+						fluxSortie.writeObject(collerFichier((byte[])fluxEntree.readObject(), commande[1]));
 						break;
 					case "download": 
-						copierFichier2(commande[1], fluxSortie);
+						copierFichier(commande[1], fluxSortie);
 						break;
 					case "exit":
-						System.exit(0);				
+						nbClient--;
+						if(nbClient < 1) System.exit(0);	
+						else return;
 				}
 				
 			}
@@ -97,18 +111,38 @@ public class Main extends Thread{
 		}
 	}
 	
+	// done
 	public void run() {
-		portRef++;
+		
+		nextPort();
+		boolean portAccepter = false;
+		
+		// trouver le prochain port valide
+		while(!portAccepter) {
+			try {
+				ServerSocket test = new ServerSocket(portRef);
+				test.close();
+				portAccepter = true;
+			} catch (Exception e) {
+				System.out.println("Le port " + portRef + " est innacessible");
+				nextPort();
+			}
+		}
+		
 		System.out.println("Nouveau port d'Acceuil: " + portRef);
 		nouveauClient(portRef);
 	}
 	
 	// done
-	public String cd(String dossier) {
+	public static void nextPort() {
+		portRef = (portRef+1)%50+5000;
+	}
+	
+	// done
+ 	public String cd(String dossier) {
 		
-		// implement /..
 		if(dossier.equals("..")) {
-			chemin = chemin.equals("./../../serveur") ? chemin: chemin.substring(0, chemin.lastIndexOf("/"));
+			chemin = chemin.equals("./") ? chemin: chemin.substring(0, chemin.lastIndexOf("/"));
 			return chemin;
 		}
 		
@@ -140,7 +174,34 @@ public class Main extends Thread{
 	}
 	
 	// done
-	public void copierFichier2(String nom, ObjectOutputStream fluxSortie) throws IOException {
+	public void copierFichier(String nom, ObjectOutputStream fluxSortie) throws IOException {
+		
+		// verification de l'Existence du fichier
+		
+		boolean lecturePossible = false;
+		
+		for(String fichier: ls()) {
+			if(fichier.equals(nom)) {
+				lecturePossible = true;
+			}
+		}
+		
+		if(!lecturePossible) {
+			fluxSortie.writeObject("Le fichier demander n'existe pas");
+			fluxSortie.writeObject(false);
+			return;
+		}
+		
+		// verifier que ce n'est pas un repertoire.
+		
+		if(!nom.contains(".")) {
+			fluxSortie.writeObject("Le fichier demander est un repertoire. Impossible de le telecharger");
+			fluxSortie.writeObject(false);
+			return;
+		}
+		
+		fluxSortie.writeObject("Copie en cours...");
+		fluxSortie.writeObject(true);
 		
 		FileInputStream fluxFichier = null;
 	    BufferedInputStream fluxEntree = null;
@@ -165,18 +226,22 @@ public class Main extends Thread{
 		      
 	}
 	
-	public void collerFichier(ObjectInputStream fluxEntree, String nom) throws Exception{
-		
-		byte[] data = (byte[])fluxEntree.readObject();
-		
-		FileOutputStream fluxFichier = null;
-	    BufferedOutputStream fluxSortie = null;
-	    
-		fluxFichier = new FileOutputStream(chemin + "/" + nom);
-	    fluxSortie = new BufferedOutputStream(fluxFichier);
-	    
-	    fluxSortie.write(data, 0 , data.length);
-	    fluxSortie.flush();
+	// done
+	public String collerFichier(byte[] data, String nom) {
+				
+		try {
+			
+			FileOutputStream fluxFichier = new FileOutputStream(chemin + "/" + nom);
+		    BufferedOutputStream fluxSortie = new BufferedOutputStream(fluxFichier);
+		    fluxSortie.write(data, 0 , data.length);
+		    fluxSortie.flush();
+		    return "le ficher " + nom + " a été sauvgarder sur le serveur";
+		    
+		} catch (IOException e) {
+			
+			return "Le fichier " + nom + " n'a pas pu etre sauvergarder sur le serveur";
+			
+		}
 	    
 	}
 	

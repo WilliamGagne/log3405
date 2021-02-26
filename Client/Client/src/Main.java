@@ -5,7 +5,8 @@ import java.nio.file.Files;
 import java.util.Scanner;
 
 public class Main {
-	
+		
+	// done
 	public static void main(String[] args) {
 		
 		String adresse = lireAdresseValide();
@@ -15,25 +16,45 @@ public class Main {
 				
 	}
 	
+	// done
 	public static void communication(String adresse, int port) {
 				
 		try 
 		{
-            Socket serveur = new Socket(adresse, port);
+			Socket serveur = null;
 			
+			try {
+				
+				serveur = new Socket(adresse, port);
+            
+			} catch (Exception e) {
+				
+				System.err.println("Impossible de se connecté a " + adresse + " sur le port " + port);
+				return;
+				
+			}
+            
+            
             ObjectOutputStream fluxSortie = new ObjectOutputStream(serveur.getOutputStream());
             ObjectInputStream fluxEntree = new ObjectInputStream(serveur.getInputStream());
+            
+           
             	 
             while (!serveur.isClosed())  		                
                 while (!commande(fluxSortie, fluxEntree, serveur));
             
             serveur.close();
-        } catch(Exception e) {
-		e.printStackTrace();
+        } 
+		
+		catch(Exception e) {
+			
+			System.err.println("Communication avec le serveur interompu");
+			
 		}
 				
 	}
 	
+	// done
 	public static boolean commande(ObjectOutputStream fluxSortie, ObjectInputStream fluxEntree, Socket serveur) throws Exception {
 		
 		Scanner sc  = new Scanner(System.in);
@@ -77,19 +98,26 @@ public class Main {
 				
 				if(!verifierParam(commande, 1)) break;						// verif du param
 				
-				fluxSortie.writeObject(commande);							// envoie de la commande
-				copierFichier(commande[1], fluxSortie);						// copier le fichier
+				if(validerFichierUpload(commande[1])) {						// verfier si l'envoie est possible
+					fluxSortie.writeObject(commande);						// envoie de la commande
+					copierFichier(commande[1], fluxSortie);					// copier le fichier
+					System.out.println(fluxEntree.readObject());			
+				}
 				
 				valide = true;
 				break;
 				
 			case "download": 
 				
-				if(!verifierParam(commande, 1)) break;						// verif du param	
+				if(!verifierParam(commande, 1)) break;								// verif du param	
 				
-				fluxSortie.writeObject(commande);							// envoie de la commande
-				collerFichier(fluxEntree, commande[1]);					// copier le fichier sur le dossier local
+				fluxSortie.writeObject(commande);									// envoie de la commande
 				
+				System.out.println(fluxEntree.readObject());						// afficher la reponse
+				
+				if((boolean)fluxEntree.readObject()) {
+					collerFichier((byte[])fluxEntree.readObject(), commande[1]);	// copier le fichier sur le dossier local
+				}
 				valide = true;
 				break;
 				
@@ -110,48 +138,86 @@ public class Main {
 		return valide;
 	}
 	
-	public static void copierFichier(String nom, ObjectOutputStream fluxSortie) throws IOException {
+	// done
+	public static boolean validerFichierUpload(String nom) {
 		
+		try {
+								
+			for(String fichiers: new File("./").list()) {
+				if(fichiers.equals(nom)) {
+				
+					if(new File("./" + nom).isDirectory()) {
+						System.out.println("Le fichier demander est un repertoire. Impossible de le telecharger");
+						return false;
+	
+					} else {
+						
+						return true;
+						
+					}
+					
+					
+				}
+				
+			}
+			
+			System.out.println(nom + " n'existe pas");
+			return false;
+			
+		}catch(Exception e) {
+			
+			System.out.println("Le repertoire ne contient aucun fichier");
+			return false;
+			
+		}
+	}
+	
+	// done
+	public static void copierFichier(String nom, ObjectOutputStream fluxSortie) throws IOException {
+				
 		FileInputStream fluxFichier = null;
 	    BufferedInputStream fluxEntree = null;
 	    byte[] data;
 	    
         try {
           // send file
-          File fichier = new File ("./client/"+nom);
+          File fichier = new File ("./"+nom);
           data  = new byte [(int)fichier.length()];
           fluxFichier = new FileInputStream(fichier);
           fluxEntree = new BufferedInputStream(fluxFichier);
           fluxEntree.read(data,0,data.length);
-          
           fluxSortie.writeObject(data);
                     
         } catch (Exception e) {
         	
+    		System.out.println("erreur lors de la copie");
         	data = new byte[1];
             fluxSortie.writeObject(data);
 			
 		}
 		      
-	}
+	}	
 	
-	
-	
-	public static void collerFichier(ObjectInputStream fluxEntree, String nom) throws ClassNotFoundException, IOException {
-		
-		byte[] data = (byte[])fluxEntree.readObject();
-		
-		FileOutputStream fluxFichier = null;
-	    BufferedOutputStream fluxSortie = null;
-	    
-		fluxFichier = new FileOutputStream("./client/"+nom);
-	    fluxSortie = new BufferedOutputStream(fluxFichier);
+	// done
+	public static void collerFichier(byte[] data, String nom) {
+				
+		try {
+
+		FileOutputStream fluxFichier = new FileOutputStream("./"+nom);
+	    BufferedOutputStream fluxSortie =  new BufferedOutputStream(fluxFichier);
 	    
 	    fluxSortie.write(data, 0 , data.length);
 	    fluxSortie.flush();
+		System.out.println("copie de " + nom+ " reussi");
+
+	    
+		} catch (Exception e) {
+			System.out.println("impossible d'ecrire le ficher: " + nom);
+		}
 		
 	}
-		
+	
+	// done
 	public static String lireAdresseValide() {
 		
 		Scanner sc = new Scanner(System.in);
@@ -177,7 +243,8 @@ public class Main {
 		return temp;
 
 	}
-	
+
+	// done
 	public static int lirePortValide() {
 		
 		Scanner sc = new Scanner(System.in);
@@ -191,10 +258,11 @@ public class Main {
 				temp = sc.nextLine();
 				port = Integer.valueOf(temp);
 				if(port < 5000 || port > 5050) throw new Exception("mauvais port");
-				temp = "";
+				if(port != Math.floor( port)) throw new Exception("mauvais port");
 			}
 			catch(Exception e) {
 				System.out.println("Port invalide");
+				temp = null;
 			}
 		} while(temp == null);
 		
@@ -202,6 +270,7 @@ public class Main {
 		
 	}
 
+	// done
 	public static boolean verifierParam(String[] param, int nbParam) {
 		
 		
